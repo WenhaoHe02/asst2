@@ -67,9 +67,9 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
 struct WaitingTask {
     TaskID _id; // the TaskID of this task
     TaskID _depend_TaskID; // the maximum TaskID of this task's dependencies
-    IRunnable* _runnable; // the bulk task
-    int _num_total_tasks;
-    WaitingTask(TaskID id, TaskID dependency, IRunnable* runnable, int num_total_tasks):_id{id}, _depend_TaskID{dependency}, _runnable{runnable}, _num_total_tasks{num_total_tasks}{};
+    IRunnable* runnable_; // the bulk task
+    int num_total_tasks_;
+    WaitingTask(TaskID id, TaskID dependency, IRunnable* runnable, int num_total_tasks):_id{id}, _depend_TaskID{dependency}, runnable_{runnable}, num_total_tasks_{num_total_tasks}{};
     bool operator<(const WaitingTask& other) const {
         return _depend_TaskID > other._depend_TaskID;
     }
@@ -80,10 +80,10 @@ struct WaitingTask {
  */
 struct ReadyTask {
     TaskID _id;
-    IRunnable* _runnable;
-    int _current_task;
-    int _num_total_tasks;
-    ReadyTask(TaskID id, IRunnable* runnable, int num_total_tasks):_id(id), _runnable(runnable), _current_task{0}, _num_total_tasks(num_total_tasks) {}
+    IRunnable* runnable_;
+    int current_task_;
+    int num_total_tasks_;
+    ReadyTask(TaskID id, IRunnable* runnable, int num_total_tasks):_id(id), runnable_(runnable), current_task_{0}, num_total_tasks_(num_total_tasks) {}
     ReadyTask(){}
 };
 
@@ -98,35 +98,35 @@ struct ReadyTask {
 class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
     private:
         // the maximum number of workerThread this TaskSystem can use
-        int _num_Threads;
+        int num_threads_;
 
         // record the process of tasks which are in executing
-        std::map<TaskID, std::pair<int, int> > _task_Process;
-        std::mutex* _meta_data_mutex; // protect _task_Process and _finished_TaskID
+        std::map<TaskID, std::pair<int, int> > task_process_;
+        std::mutex  meta_data_mutex_; // protect task_process_ and finished_TaskID_
 
-        // task in the waiting queue with _depend_TaskID <= _finished_TaskID can be pushed into ready queue
-        TaskID _finished_TaskID;         
+        // task in the waiting queue with _depend_TaskID <= finished_TaskID_ can be pushed into ready queue
+        TaskID finished_TaskID_;         
         // wait/notify syn() thread
-        std::condition_variable* _finished;
+        std::condition_variable finished_;
 
 
 
         // the next call to run or runAsyncWithDeps with get this TaskID back
-        TaskID _next_TaskID;         
+        TaskID next_TaskID_;         
 
         // notify workerThreads to kill themselves
-        bool _killed;         
+        bool killed_;         
         
         // worker thread pool
-        std::thread* _threads_pool;
+        std::vector<std::thread> threads_pool_;
 
         // waiting task queue
         std::priority_queue<WaitingTask, std::vector<WaitingTask> > _waiting_queue;
-        std::mutex* _waiting_queue_mutex;
+        std::mutex _waiting_queue_mutex;
 
         // ready task queue
-        std::queue<ReadyTask> _ready_queue;
-        std::mutex* _ready_queue_mutex;
+        std::queue<ReadyTask> ready_queue_;
+        std::mutex ready_queue_mutex_;
 
 
     public:
